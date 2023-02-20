@@ -43,8 +43,7 @@ def main(iargs=None):
     if template['miaplpy.timeseries.tempCohType'] == 'auto':
         template['miaplpy.timeseries.tempCohType'] = 'full'
 
-    atr = {}
-    atr['miaplpy.timeseries.tempCohType'] = template['miaplpy.timeseries.tempCohType']
+    atr = {'miaplpy.timeseries.tempCohType': template['miaplpy.timeseries.tempCohType']}
     ut.add_attribute(inps.ifgramStackFile, atr)
 
     # 1) invert ifgramStack for time-series

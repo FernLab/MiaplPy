@@ -16,10 +16,10 @@ import time
 import shutil
 import math
 import datetime
-from mintpy.utils import writefile, readfile, utils as ut
+from mintpy.utils import readfile, utils as ut
 from mintpy.smallbaselineApp import TimeSeriesAnalysis
 from miaplpy.objects.arg_parser import MiaplPyParser
-from miaplpy.defaults.auto_path import autoPath, PathFind
+from miaplpy.defaults.auto_path import PathFind
 import miaplpy.find_short_baselines as fb   # import find_baselines, plot_baselines
 from miaplpy.objects.utils import (check_template_auto_value,
                                   log_message, get_latest_template_miaplpy,
@@ -101,6 +101,10 @@ class miaplpyTimeSeriesAnalysis(TimeSeriesAnalysis):
 
     def __init__(self, customTemplateFile=None, workDir=None, inps=None):
 
+        self.projectName = None
+        self.templateFile = None
+        self.template_mintpy = None
+        self.templateFile_mintpy = None
         self.org_custom_template = customTemplateFile
 
         if not customTemplateFile is None:

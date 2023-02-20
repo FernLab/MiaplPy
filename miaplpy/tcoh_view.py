@@ -12,7 +12,7 @@ from matplotlib import pyplot as plt
 from mintpy.cli import timeseries2velocity as ts2vel
 import mintpy.cli.tsview as tsview
 from miaplpy.objects.invert_pixel import ks_lut_cy, get_shp_row_col_c, custom_cmap, gam_pta
-from mintpy.utils import arg_group, ptime, time_func, readfile, plot as pp
+from mintpy.utils import arg_group, plot as pp
 from miaplpy.objects.slcStack import slcStack
 import miaplpy.lib.utils as iut
 

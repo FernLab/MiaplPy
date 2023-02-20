@@ -6,6 +6,8 @@
 import os
 import shutil
 import glob
+import warnings
+
 from mintpy.objects.coord import coordinate
 import h5py
 from osgeo import gdal
@@ -13,16 +15,14 @@ import datetime
 import re
 import numpy as np
 from miaplpy.objects.arg_parser import MiaplPyParser
+from miaplpy.objects.slcStack import slcStack
 from mintpy.utils import readfile, ptime, utils as ut
 from mintpy.objects import (
     DSET_UNIT_DICT,
     geometry,
-    GEOMETRY_DSET_NAMES,
     giantIfgramStack,
     giantTimeseries,
-    IFGRAM_DSET_NAMES,
     ifgramStack,
-    TIMESERIES_DSET_NAMES,
     timeseries,
     HDFEOS
 )
@@ -101,8 +101,6 @@ class OutControl:
     def concatenate_error_files(self):
         """
         Concatenate error files to one file (*.e files in run_files).
-        :param directory: str
-        :param out_name: str
         :return: None
         """
 
@@ -152,6 +150,13 @@ class OutControl:
 class coord_rev(coordinate):
     def __init__(self, metadata, lookup_file=None):
         super().__init__(metadata, lookup_file)
+        self.lut_metadata = None
+        self.lon_step = None
+        self.geocoded = None
+        self.lat_step = None
+        self.lon0 = None
+        self.lat0 = None
+        self.earth_radius = None
 
     def open(self):
         try:
@@ -1035,6 +1040,7 @@ def get_latest_template_miaplpy(work_dir):
             print('obsolete default template detected, update to the latest version.')
             shutil.copy2(lfile, work_dir)
             orig_dict = Template(cfile).options
+            update = False
             for key, value in orig_dict.items():
                 if key in cdict.keys() and cdict[key] != value:
                     update = True
@@ -1097,7 +1103,7 @@ def read_subset_template2box(template_file):
 
 def read_subset_box(inpsDict):
     import mintpy.load_data as mld
-    from mintpy import subset
+    # from mintpy import subset
 
     # Read subset info from template
     inpsDict['box'] = None
@@ -1337,45 +1343,45 @@ def prepare_metadata(inpsDict):
     return
 
 
-def multilook(infile, outfile, rlks, alks, multilook_tool='gdal'):
-    from mroipac.looks.Looks import Looks
-    import isceobj
-
-    if multilook_tool == "gdal":
-
-        print(infile)
-        ds = gdal.Open(infile + ".vrt", gdal.GA_ReadOnly)
-
-        xSize = ds.RasterXSize
-        ySize = ds.RasterYSize
-
-        outXSize = xSize / int(rlks)
-        outYSize = ySize / int(alks)
-
-        gdalTranslateOpts = gdal.TranslateOptions(format="ENVI", width=outXSize, height=outYSize)
-
-        gdal.Translate(outfile, ds, options=gdalTranslateOpts)
-        ds = None
-
-        ds = gdal.Open(outfile, gdal.GA_ReadOnly)
-        gdal.Translate(outfile + ".vrt", ds, options=gdal.TranslateOptions(format="VRT"))
-        ds = None
-
-    else:
-
-        print('Multilooking {0} ...'.format(infile))
-
-        inimg = isceobj.createImage()
-        inimg.load(infile + '.xml')
-
-        lkObj = Looks()
-        lkObj.setDownLooks(alks)
-        lkObj.setAcrossLooks(rlks)
-        lkObj.setInputImage(inimg)
-        lkObj.setOutputFilename(outfile)
-        lkObj.looks()
-
-    return outfilie
+# def multilook(infile, outfile, rlks, alks, multilook_tool='gdal'):
+#     from mroipac.looks.Looks import Looks
+#     import isceobj
+# 
+#     if multilook_tool == "gdal":
+# 
+#         print(infile)
+#         ds = gdal.Open(infile + ".vrt", gdal.GA_ReadOnly)
+# 
+#         xSize = ds.RasterXSize
+#         ySize = ds.RasterYSize
+# 
+#         outXSize = xSize / int(rlks)
+#         outYSize = ySize / int(alks)
+# 
+#         gdalTranslateOpts = gdal.TranslateOptions(format="ENVI", width=outXSize, height=outYSize)
+# 
+#         gdal.Translate(outfile, ds, options=gdalTranslateOpts)
+#         ds = None
+# 
+#         ds = gdal.Open(outfile, gdal.GA_ReadOnly)
+#         gdal.Translate(outfile + ".vrt", ds, options=gdal.TranslateOptions(format="VRT"))
+#         ds = None
+# 
+#     else:
+# 
+#         print('Multilooking {0} ...'.format(infile))
+# 
+#         inimg = isceobj.createImage()
+#         inimg.load(infile + '.xml')
+# 
+#         lkObj = Looks()
+#         lkObj.setDownLooks(alks)
+#         lkObj.setAcrossLooks(rlks)
+#         lkObj.setInputImage(inimg)
+#         lkObj.setOutputFilename(outfile)
+#         lkObj.looks()
+# 
+#     return outfilie
 
 def ks_lut(N1, N2, alpha=0.05):
     N = (N1 * N2) / float(N1 + N2)

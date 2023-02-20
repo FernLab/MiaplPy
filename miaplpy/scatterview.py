@@ -20,14 +20,8 @@ import warnings
 
 warnings.filterwarnings("ignore", category=UserWarning, module="matplotlib")
 
-from mintpy.objects import (
-    geometryDatasetNames,
-    geometry,
-    ifgramDatasetNames,
-    ifgramStack,
-    timeseriesKeyNames,
-    timeseries,
-)
+from mintpy.objects import ifgramStack
+
 from mintpy.objects.gps import GPS
 from mintpy.utils import ptime, readfile, utils as ut, plot as pp
 from mintpy.cli.multilook import multilook_data
