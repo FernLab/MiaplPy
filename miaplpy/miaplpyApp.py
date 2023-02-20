@@ -22,8 +22,8 @@ from miaplpy.objects.arg_parser import MiaplPyParser
 from miaplpy.defaults.auto_path import PathFind
 import miaplpy.find_short_baselines as fb   # import find_baselines, plot_baselines
 from miaplpy.objects.utils import (check_template_auto_value,
-                                  log_message, get_latest_template_miaplpy,
-                                  read_initial_info)
+                                   log_message, get_latest_template_miaplpy)
+from miaplpy.objects.slcStack import read_initial_info
 
 pathObj = PathFind()
 ###########################################################################################
