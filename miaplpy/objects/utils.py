@@ -6,7 +6,6 @@
 import os
 import shutil
 import glob
-import warnings
 
 from mintpy.objects.coord import coordinate
 import h5py
@@ -14,19 +13,20 @@ from osgeo import gdal
 import datetime
 import re
 import numpy as np
-from miaplpy.objects.arg_parser import MiaplPyParser
-from miaplpy.objects.slcStack import slcStack
 from mintpy.utils import readfile, ptime, utils as ut
 from mintpy.objects import (
     DSET_UNIT_DICT,
-    geometry,
     giantIfgramStack,
-    giantTimeseries,
-    ifgramStack,
-    timeseries,
-    HDFEOS
+    giantTimeseries
 )
+from scipy import linalg as la
 
+dataTypeDict = {
+    'byte': 'int8',
+    'float': 'float32',
+    'double': 'float64',
+    'cfloat': 'complex64',
+}
 
 datasetName2templateKey = {'slc': 'miaplpy.load.slcFile',
                                'unwrapPhase': 'miaplpy.load.unwFile',
@@ -405,13 +405,6 @@ def read_attribute(fname, datasetName=None, standardize=True, metafile_ext=None)
             atr.update(readfile.read_gdal_vrt(metafile))
             atr['FILE_TYPE'] = fext
 
-        # DATA_TYPE for ISCE products
-        dataTypeDict = {
-            'byte': 'int8',
-            'float': 'float32',
-            'double': 'float64',
-            'cfloat': 'complex64',
-        }
         data_type = atr.get('DATA_TYPE', 'none').lower()
         if data_type != 'none' and data_type in dataTypeDict.keys():
             atr['DATA_TYPE'] = dataTypeDict[data_type]
@@ -533,125 +526,9 @@ def check_template_auto_value(templateDict, mintpyTemplateDict=None, auto_file='
 
 
 ########################################################################################
-def read(fname, box=None, datasetName=None, print_msg=True):
-    """Read one dataset and its attributes from input file.
-    Parameters: fname : str, path of file to read
-                datasetName : str or list of str, slice names
-                box : 4-tuple of int area to read, defined in (x0, y0, x1, y1) in pixel coordinate
-    Returns:    data : 2/3-D matrix in numpy.array format, return None if failed
-                atr : dictionary, attributes of data, return None if failed
-    Examples:
-        from mintpy.utils import readfile
-        data, atr = readfile.read('velocity.h5')
-        data, atr = readfile.read('timeseries.h5')
-        data, atr = readfile.read('timeseries.h5', datasetName='timeseries-20161020')
-        data, atr = readfile.read('ifgramStack.h5', datasetName='unwrapPhase')
-        data, atr = readfile.read('ifgramStack.h5', datasetName='unwrapPhase-20161020_20161026')
-        data, atr = readfile.read('ifgramStack.h5', datasetName='coherence', box=(100,1100, 500, 2500))
-        data, atr = readfile.read('geometryRadar.h5', datasetName='height')
-        data, atr = readfile.read('geometryRadar.h5', datasetName='bperp')
-        data, atr = readfile.read('100120-110214.unw', box=(100,1100, 500, 2500))
-    """
-    # metadata
-    dsname4atr = None   #used to determine UNIT
-    if isinstance(datasetName, list):
-        dsname4atr = datasetName[0].split('-')[0]
-    elif isinstance(datasetName, str):
-        dsname4atr = datasetName.split('-')[0]
-
-    files = [fname + i for i in ['.rsc', '.xml']]
-    fext0 = ['.' + i.split('.')[-1] for i in files if os.path.exists(i)][0]
-
-    atr = read_attribute(fname, datasetName=dsname4atr, metafile_ext=fext0)
-
-    # box
-    length, width = int(atr['LENGTH']), int(atr['WIDTH'])
-    if not box:
-        box = (0, 0, width, length)
-
-    # Read Data
-    fext = os.path.splitext(os.path.basename(fname))[1].lower()
-    if fext in ['.h5', '.he5']:
-        data = read_hdf5_file(fname, datasetName=datasetName, box=box)
-    else:
-        data, atr = read_binary_file(fname, datasetName=datasetName, box=box)
-        #data, atr = readfile.read_binary_file(fname, datasetName=datasetName, box=box, xstep=1, ystep=1)
-    return data, atr
 
 
 #########################################################################
-def read_hdf5_file(fname, datasetName=None, box=None):
-    """
-    Parameters: fname : str, name of HDF5 file to read
-                datasetName : str or list of str, dataset name in root level with/without date info
-                    'timeseries'
-                    'timeseries-20150215'
-                    'unwrapPhase'
-                    'unwrapPhase-20150215_20150227'
-                    'HDFEOS/GRIDS/timeseries/observation/displacement'
-                    'recons'
-                    'recons-20150215'
-                    ['recons-20150215', 'recons-20150227', ...]
-                    '20150215'
-                    'cmask'
-                    'igram-20150215_20150227'
-                    ...
-                box : 4-tuple of int area to read, defined in (x0, y0, x1, y1) in pixel coordinate
-    Returns:    data : 2D/3D array
-                atr : dict, metadata
-    """
-    # File Info: list of slice / dataset / dataset2d / dataset3d
-    slice_list = get_slice_list(fname)
-    ds_list = []
-    for i in [i.split('-')[0] for i in slice_list]:
-        if i not in ds_list:
-            ds_list.append(i)
-    ds_2d_list = [i for i in slice_list if '-' not in i]
-    ds_3d_list = [i for i in ds_list if i not in ds_2d_list]
-
-    # Input Argument: convert input datasetName into list of slice
-    if not datasetName:
-        datasetName = [ds_list[0]]
-    elif isinstance(datasetName, str):
-        datasetName = [datasetName]
-    if all(i.isdigit() for i in datasetName):
-        datasetName = ['{}-{}'.format(ds_3d_list[0], i) for i in datasetName]
-    # Input Argument: decompose slice list into dsFamily and inputDateList
-    dsFamily = datasetName[0].split('-')[0]
-    inputDateList = [i.replace(dsFamily,'').replace('-','') for i in datasetName]
-
-    # read hdf5
-    with h5py.File(fname, 'r') as f:
-        # get dataset object
-        dsNames = [i for i in [datasetName[0], dsFamily] if i in f.keys()]
-        dsNamesOld = [i for i in slice_list if '/{}'.format(datasetName[0]) in i] # support for old mintpy files
-        if len(dsNames) > 0:
-            ds = f[dsNames[0]]
-        elif len(dsNamesOld) > 0:
-            ds = f[dsNamesOld[0]]
-        else:
-            raise ValueError('input dataset {} not found in file {}'.format(datasetName, fname))
-
-        # 2D dataset
-        if ds.ndim == 2:
-            data = ds[box[1]:box[3], box[0]:box[2]]
-
-        # 3D dataset
-        elif ds.ndim == 3:
-            # define flag matrix for index in time domain
-            slice_flag = np.zeros((ds.shape[0]), dtype=np.bool_)
-            if not inputDateList or inputDateList == ['']:
-                slice_flag[:] = True
-            else:
-                date_list = [i.split('-')[1] for i in
-                             [j for j in slice_list if j.startswith(dsFamily)]]
-                for d in inputDateList:
-                    slice_flag[date_list.index(d)] = True
-
-            # read data
-            data = ds[slice_flag, box[1]:box[3], box[0]:box[2]]
-            data = np.squeeze(data)
-    return data
 
 
 #########################################################################
@@ -689,13 +566,6 @@ def read_binary_file(fname, datasetName=None, box=None, attributes_only=False):
 
     # ISCE
     if processor in ['isce']:
-        # convert default short name for data type from ISCE
-        dataTypeDict = {
-            'byte': 'int8',
-            'float': 'float32',
-            'double': 'float64',
-            'cfloat': 'complex64',
-        }
         if data_type in dataTypeDict.keys():
             data_type = dataTypeDict[data_type]
 
@@ -819,83 +689,6 @@ def read_binary_file(fname, datasetName=None, box=None, attributes_only=False):
         return data, atr
 
 
-
-
-def get_slice_list(fname):
-    """Get list of 2D slice existed in file (for display)"""
-    fbase, fext = os.path.splitext(os.path.basename(fname))
-    fext = fext.lower()
-    atr = read_attribute(fname)
-    k = atr['FILE_TYPE']
-
-    global slice_list
-    # HDF5 Files
-    if fext in ['.h5', '.he5']:
-        with h5py.File(fname, 'r') as f:
-            d1_list = [i for i in f.keys() if isinstance(f[i], h5py.Dataset)]
-        if k == 'timeseries' and k in d1_list:
-            obj = timeseries(fname)
-            obj.open(print_msg=False)
-            slice_list = obj.sliceList
-
-        elif k == 'slc':
-            obj = slcStack(fname)
-            obj.open(print_msg=False)
-            slice_list = obj.sliceList
-
-        elif k in ['geometry'] and k not in d1_list:
-            obj = geometry(fname)
-            obj.open(print_msg=False)
-            slice_list = obj.sliceList
-
-        elif k in ['ifgramStack']:
-            obj = ifgramStack(fname)
-            obj.open(print_msg=False)
-            slice_list = obj.sliceList
-
-        elif k in ['HDFEOS']:
-            obj = HDFEOS(fname)
-            obj.open(print_msg=False)
-            slice_list = obj.sliceList
-
-        elif k in ['giantTimeseries']:
-            obj = giantTimeseries(fname)
-            obj.open(print_msg=False)
-            slice_list = obj.sliceList
-
-        elif k in ['giantIfgramStack']:
-            obj = giantIfgramStack(fname)
-            obj.open(print_msg=False)
-            slice_list = obj.sliceList
-
-        else:
-            ## Find slice by walking through the file structure
-            length, width = int(atr['LENGTH']), int(atr['WIDTH'])
-
-            def get_hdf5_2d_dataset(name, obj):
-                global slice_list
-                if isinstance(obj, h5py.Dataset) and obj.shape[-2:] == (length, width):
-                    if obj.ndim == 2:
-                        slice_list.append(name)
-                    else:
-                        warnings.warn('file has un-defined {}D dataset: {}'.format(obj.ndim, name))
-
-            slice_list = []
-            with h5py.File(fname, 'r') as f:
-                f.visititems(get_hdf5_2d_dataset)
-
-    # Binary Files
-    else:
-        if fext.lower() in ['.trans', '.utm_to_rdc']:
-            slice_list = ['rangeCoord', 'azimuthCoord']
-        elif fbase.startswith('los'):
-            slice_list = ['incidenceAngle', 'azimuthAngle']
-        elif atr.get('number_bands', '1') == '2' and 'unw' not in k:
-            slice_list = ['band1', 'band2']
-        else:
-            slice_list = ['']
-    return slice_list
-
 #############################################################################
 
 
@@ -1012,7 +805,7 @@ def email_miaplpy(work_dir):
     command = 'ssh pegasus.ccs.miami.edu \"cd ' + cwd + '; ' + mailCmd + '\"'
     print(command)
     status = subprocess.Popen(command, shell=True).wait()
-    if status is not 0:
+    if status != 0:
         sys.exit('Error in email_miaplpy')
 
     return
@@ -1206,35 +999,6 @@ def update_or_skip_inversion(inverted_date_list, slc_dates):
     return updated_index, all_date_list
 
 
-def read_initial_info(work_dir, templateFile):
-    from miaplpy.objects.slcStack import slcStack
-    #import miaplpy.workflow
-
-    slc_file = os.path.join(work_dir, 'inputs/slcStack.h5')
-
-    if os.path.exists(slc_file):
-        slcObj = slcStack(slc_file)
-        slcObj.open(print_msg=False)
-        date_list = slcObj.get_date_list()
-        metadata = slcObj.get_metadata()
-        num_pixels = int(metadata['LENGTH']) * int(metadata['WIDTH'])
-    else:
-        scp_args = '--template {}'.format(templateFile)
-        scp_args += ' --project_dir {} --work_dir {}'.format(os.path.dirname(work_dir), work_dir)
-
-        Parser_LoadSlc = MiaplPyParser(scp_args.split(), script='load_slc')
-        inps_loadSlc = Parser_LoadSlc.parse()
-        iDict = read_inps2dict(inps_loadSlc)
-        prepare_metadata(iDict)
-        metadata = read_subset_box(iDict)
-        box = metadata['box']
-        num_pixels = (box[2] - box[0]) * (box[3] - box[1])
-        stackObj = read_inps_dict2slc_stack_dict_object(iDict)
-        date_list = stackObj.get_date_list()
-
-    return date_list, num_pixels, metadata
-
-
 def read_inps2dict(inps):
     """Read input Namespace object info into inpsDict"""
 
@@ -1415,7 +1179,7 @@ def est_corr(CCGsam):
 def cov2corr(cov_matrix):
     """ Converts covariance matrix to correlation/coherence matrix. """
 
-    D = LA.pinv(np.diagflat(np.sqrt(np.diag(cov_matrix))))
+    D = la.pinv(np.diagflat(np.sqrt(np.diag(cov_matrix))))
     y = np.matmul(D, cov_matrix)
     corr_matrix = np.matmul(y, np.transpose(D))
 
@@ -1574,164 +1338,4 @@ def skip_files_with_inconsistent_size(dsPathDict, pix_box=None, dsName='slc'):
         print(msg)
     return dsPathDict
 
-def write_layout_hdf5(fname, ds_name_dict=None, metadata=None, ds_unit_dict=None, ref_file=None, compression=None, print_msg=True):
-    """Create HDF5 file with defined metadata and (empty) dataset structure
 
-    Parameters: fname        - str, HDF5 file path
-                ds_name_dict - dict, dataset structure definition
-                               {dname : [dtype, dshape],
-                                dname : [dtype, dshape, None],
-                                dname : [dtype, dshape, 1/2/3/4D np.ndarray], #for aux data
-                                ...
-                               }
-                metadata     - dict, metadata
-                ds_unit_dict - dict, dataset unit definition
-                               {dname : dunit,
-                                dname : dunit,
-                                ...
-                               }
-                ref_file     - str, reference file for the data structure
-                compression  - str, HDF5 compression type
-    Returns:    fname        - str, HDF5 file path
-
-    Example:    layout_hdf5('timeseries_ERA5.h5', ref_file='timeseries.h5')
-                layout_hdf5('timeseries_ERA5.5h', ds_name_dict, metadata)
-
-    # structure for ifgramStack
-    ds_name_dict = {
-        "date"             : [np.dtype('S8'), (num_ifgram, 2)],
-        "dropIfgram"       : [np.bool_,       (num_ifgram,)],
-        "bperp"            : [np.float32,     (num_ifgram,)],
-        "unwrapPhase"      : [np.float32,     (num_ifgram, length, width)],
-        "coherence"        : [np.float32,     (num_ifgram, length, width)],
-        "connectComponent" : [np.int16,       (num_ifgram, length, width)],
-    }
-
-    # structure for geometry
-    ds_name_dict = {
-        "height"             : [np.float32, (length, width), None],
-        "incidenceAngle"     : [np.float32, (length, width), None],
-        "slantRangeDistance" : [np.float32, (length, width), None],
-    }
-
-    # structure for timeseries
-    dates = np.array(date_list, np.string_)
-    ds_name_dict = {
-        "date"       : [np.dtype("S8"), (num_date,), dates],
-        "bperp"      : [np.float32,     (num_date,), pbase],
-        "timeseries" : [np.float32,     (num_date, length, width)],
-    }
-    """
-    vprint = print if print_msg else lambda *args, **kwargs: None
-    vprint('-'*50)
-
-    # get meta from metadata and ref_file
-    if metadata:
-        meta = {key: value for key, value in metadata.items()}
-    elif ref_file:
-        with h5py.File(ref_file, 'r') as fr:
-            meta = {key: value for key, value in fr.attrs.items()}
-        vprint('grab metadata from ref_file: {}'.format(ref_file))
-    else:
-        raise ValueError('No metadata or ref_file found.')
-
-    # check ds_name_dict
-    if ds_name_dict is None:
-        if not ref_file or not os.path.isfile(ref_file):
-            raise FileNotFoundError('No ds_name_dict or ref_file found!')
-        else:
-            vprint('grab dataset structure from ref_file: {}'.format(ref_file))
-
-        ds_name_dict = {}
-        fext = os.path.splitext(ref_file)[1]
-        shape2d = (int(meta['LENGTH']), int(meta['WIDTH']))
-
-        if fext in ['.h5', '.he5']:
-            # copy dset structure from HDF5 file
-            with h5py.File(ref_file, 'r') as fr:
-                # in case output mat size is different from the input ref file mat size
-                shape2d_orig = (int(fr.attrs['LENGTH']), int(fr.attrs['WIDTH']))
-
-                for key in fr.keys():
-                    ds = fr[key]
-                    if isinstance(ds, h5py.Dataset):
-
-                        # auxliary dataset
-                        if ds.shape[-2:] != shape2d_orig:
-                            ds_name_dict[key] = [ds.dtype, ds.shape, ds[:]]
-
-                        # dataset
-                        else:
-                            ds_shape = list(ds.shape)
-                            ds_shape[-2:] = shape2d
-                            ds_name_dict[key] = [ds.dtype, tuple(ds_shape), None]
-
-        else:
-            # construct dset structure from binary file
-            ds_names = readfile.get_slice_list(ref_file)
-            ds_dtype = meta['DATA_TYPE']
-            for ds_name in ds_names:
-                ds_name_dict[ds_name] = [ds_dtype, tuple(shape2d), None]
-
-    # directory
-    fdir = os.path.dirname(os.path.abspath(fname))
-    if not os.path.isdir(fdir):
-        os.makedirs(fdir)
-        vprint('crerate directory: {}'.format(fdir))
-
-    # create file
-    with h5py.File(fname, "a") as f:
-        vprint('create HDF5 file: {} with w mode'.format(fname))
-
-        # initiate dataset
-        max_digit = max([len(i) for i in ds_name_dict.keys()])
-        for key in ds_name_dict.keys():
-            data_type  = ds_name_dict[key][0]
-            data_shape = ds_name_dict[key][1]
-
-            # turn ON compression for conn comp
-            ds_comp = compression
-            if key in ['connectComponent']:
-                ds_comp = 'lzf'
-
-            # changable dataset shape
-            if len(data_shape) == 3:
-                max_shape = (None, data_shape[1], data_shape[2])
-            else:
-                max_shape = data_shape
-
-            # create empty dataset
-            vprint(("create dataset  : {d:<{w}} of {t:<25} in size of {s:<20} with "
-                    "compression = {c}").format(d=key,
-                                                w=max_digit,
-                                                t=str(data_type),
-                                                s=str(data_shape),
-                                                c=ds_comp))
-            if not key in f.keys():
-                ds = f.create_dataset(key,
-                                      shape=data_shape,
-                                      maxshape=max_shape,
-                                      dtype=data_type,
-                                      chunks=True,
-                                      compression=ds_comp)
-            else:
-                ds = f[key]
-
-            # write auxliary data
-            if len(ds_name_dict[key]) > 2 and ds_name_dict[key][2] is not None:
-                ds[:] = np.array(ds_name_dict[key][2])
-
-        # write attributes in root level
-        for key, value in meta.items():
-            f.attrs[key] = str(value)
-
-        # write attributes in dataset level
-        if ds_unit_dict is not None:
-            for key, value in ds_unit_dict.items():
-                if value is not None:
-                    f[key].attrs['UNIT'] = value
-                    vprint(f'add /{key:<{max_digit}} attribute: UNIT = {value}')
-
-    vprint('close  HDF5 file: {}'.format(fname))
-
-    return fname
