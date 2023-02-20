@@ -1,0 +1,80 @@
+name: miaplpy
+
+channels: &id1
+  - conda-forge
+
+dependencies:
+  - python=3.9.*
+  - setuptools
+  - cython
+  - gdal
+  - pyproj=3.1.0
+  - h5py=2.10.0
+  - pyhdf
+  - numpy
+  - openmp
+  - dask-jobqueue
+  - pygrib
+  - zarr
+  - cdsapi
+  - eccodes
+  - cartopy
+  - isce2
+  - scipy
+  - pip
+  - lxml
+  - cvxopt
+  - scikit-image
+  - gcc_linux-64
+  - dask
+  - defusedxml
+  - pykdtree
+  - matplotlib
+  - netcdf4
+  - pyresample
+  - xarray
+  - seaborn
+  - overpy
+  - numba
+  - deprecated
+  - mintpy
+  - dask>=1.0
+  - dask-jobqueue>=0.3
+  - pulp
+  - pyaps3>=0.3
+  - pykml>=0.2
+  - pysolid
+  - git
+  - natsort
+  - bokeh
+  - qt
+  - boto3
+  - botocore
+  - pdbpp
+
+  - pip:
+    - gstools
+    - nx-config
+    # setup requirements
+    - tox
+
+    # test requirements
+    - pytest
+    - pytest-cov
+    - pytest-reporter-html1
+    - urlchecker
+
+    # lint requirements
+    - flake8
+    - pycodestyle
+    - pydocstyle
+    - pylint
+
+    # doc requirements
+    - sphinx>=4.1.1
+    - sphinx-argparse
+    - sphinx_autodoc_typehints
+    - sphinx_rtd_theme
+
+    # deployment requirements
+    - twine
