@@ -10,7 +10,9 @@ import warnings
 import h5py
 import numpy as np
 #from miaplpy.prep_slc_isce import read_attribute
-from miaplpy.objects.utils import read_attribute, read as read_geo
+from miaplpy.objects.utils import read_attribute
+from miaplpy.objects.slcStack import read as read_geo
+
 try:
     from skimage.transform import resize
 except ImportError:
