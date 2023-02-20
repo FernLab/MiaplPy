@@ -8,33 +8,21 @@
 #   import mintpy.view as view
 
 
-import os
 import sys
-import argparse
-import datetime as dt
-import numpy as np
-import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 import warnings
 
 warnings.filterwarnings("ignore", category=UserWarning, module="matplotlib")
 
-from mintpy.objects import (
-    geometryDatasetNames,
-    geometry,
-    ifgramDatasetNames,
-    ifgramStack,
-    timeseriesKeyNames,
-    timeseries,
-)
-from mintpy.objects.gps import GPS
-from mintpy.utils import ptime, readfile, utils as ut, plot as pp
-from mintpy.multilook import multilook_data
-from mintpy import subset, version
 from mintpy.view import *
-from miaplpy.objects.utils import read_attribute, read, get_slice_list
 from miaplpy.objects.slcStack import *
 
+from miaplpy.scatterview import (
+    update_inps_with_file_metadata,
+    update_data_with_plot_inps,
+    create_parser,
+    update_inps_with_display_setting_file,
+    check_dataset_input
+)
 
 
 def cmd_line_parse(iargs=None):

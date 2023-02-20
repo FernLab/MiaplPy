@@ -27,7 +27,9 @@ def enablePrint():
 
 blockPrint()
 from mintpy.utils import isce_utils, ptime, readfile, writefile, utils as ut
-from miaplpy.objects.utils import read_attribute, read
+from miaplpy.objects.utils import read_attribute
+from miaplpy.objects.slcStack import read
+
 enablePrint()
 
 
