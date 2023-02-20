@@ -16,7 +16,7 @@ sys.path.insert(1, os.path.join(miaplpy_path, 'lib'))
 sys.path.insert(1, os.path.join(miaplpy_path, 'dev'))
 
 from miaplpy.version import *
-__version__ = release_version
+#__version__ = release_version
 #__logo__ = logo
 
 try:

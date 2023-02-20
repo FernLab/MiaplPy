@@ -22,7 +22,10 @@ from mintpy.objects import ifgramStack, cluster
 from mintpy.simulation import decorrelation as decor
 from mintpy.defaults.template import get_template_content
 from mintpy.utils import readfile, writefile, ptime, utils as ut, arg_utils
-from miaplpy.objects.utils import write_layout_hdf5
+
+import miaplpy.objects.slcStack
+from miaplpy.objects.slcStack import write_layout_hdf5
+
 #import matplotlib.pyplot as plt
 
 
@@ -861,10 +864,10 @@ def read_stack_obs(stack_obj, box, ref_phase, obs_ds_name='unwrapPhase', dropIfg
     num_pair = stack_obj.get_size(dropIfgram=dropIfgram)[0]
     if print_msg:
         print('reading {} in {} * {} ...'.format(obs_ds_name, box, num_pair))
-    stack_obs = stack_obj.read(datasetName=obs_ds_name,
-                               box=box,
-                               dropIfgram=dropIfgram,
-                               print_msg=False).reshape(num_pair, -1)
+    stack_obs = miaplpy.objects.slcStack.read(datasetName=obs_ds_name,
+                                              box=box,
+                                              dropIfgram=dropIfgram,
+                                              print_msg=False).reshape(num_pair, -1)
 
     # read ref_phase
     if ref_phase is not None:
@@ -900,10 +903,10 @@ def mask_stack_obs(stack_obs, stack_obj, box, mask_ds_name=None, mask_threshold=
         if print_msg:
             print('reading {} in {} * {} ...'.format(mask_ds_name, box, num_pair))
 
-        msk_data = stack_obj.read(datasetName=mask_ds_name,
-                                  box=box,
-                                  dropIfgram=dropIfgram,
-                                  print_msg=False).reshape(num_pair, -1)
+        msk_data = miaplpy.objects.slcStack.read(datasetName=mask_ds_name,
+                                                 box=box,
+                                                 dropIfgram=dropIfgram,
+                                                 print_msg=False).reshape(num_pair, -1)
         # set all NaN values in coherence, connectComponent, offsetSNR to zero
         # to avoid RuntimeWarning msg during math operation
         msk_data[np.isnan(msk_data)] = 0
@@ -958,10 +961,10 @@ def read_coherence(stack_obj, box, dropIfgram=True, print_msg=True):
     num_pair = stack_obj.get_size(dropIfgram=dropIfgram)[0]
     if print_msg:
         print('reading coherence in {} * {} ...'.format(box, num_pair))
-    coh_data = stack_obj.read(datasetName='coherence',
-                              box=box,
-                              dropIfgram=dropIfgram,
-                              print_msg=False).reshape(num_pair, -1)
+    coh_data = miaplpy.objects.slcStack.read(datasetName='coherence',
+                                             box=box,
+                                             dropIfgram=dropIfgram,
+                                             print_msg=False).reshape(num_pair, -1)
     coh_data[np.isnan(coh_data)] = 0.
     return coh_data
 
