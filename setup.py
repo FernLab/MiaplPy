@@ -47,7 +47,7 @@ setup(
     description="MiaplPy",
     entry_points={
         'console_scripts': [
-            'miaplpy=miaplpy.miaplpy_cli:main',
+            'miaplpy=miaplpy.miaplpyApp:main',
         ],
     },
     extras_require={
