@@ -4,7 +4,8 @@ import os
 import subprocess
 import collections
 
-
+__version__ = '0.2.0'
+__versionalias__ = '2021-09-14'
 ###########################################################################
 Tag = collections.namedtuple('Tag', 'version date')
 release_history = (
