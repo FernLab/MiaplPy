@@ -43,9 +43,11 @@ def get_version_info(version='v{}'.format(release_version), date=release_date):
     return version, date
 
 ###########################################################################
+# Shortcut to avoid errors. Should be fixed in the future."""
 
+version_num, version_date = "0.2.0", "2021-09-14"
 
-version_num, version_date = get_version_info()
+# version_num, version_date = get_version_info()
 version_description = """MiaplPy version {v}, date {d}""".format(
     v=version_num,
     d=version_date,
