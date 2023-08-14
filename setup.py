@@ -62,7 +62,7 @@ setup(
     long_description=readme,
     name='miaplpy',
     packages=find_packages(include=['miaplpy', 'miaplpy.*']),
-    package_data={"": ["*.cfg"], "": ["*.full"]},
+    package_data={"miaplpy": ["*.cfg"], "miaplpy": ["*.full"]},
     include_package_data=True,
     setup_requires=req_setup,
     test_suite='tests',
