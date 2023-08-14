@@ -63,6 +63,7 @@ setup(
     long_description=readme,
     name='miaplpy',
     packages=find_packages(include=['miaplpy', 'miaplpy.*']),
+    include_package_data=True,
     setup_requires=req_setup,
     test_suite='tests',
     tests_require=req_test,
