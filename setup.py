@@ -48,6 +48,7 @@ setup(
     entry_points={
         'console_scripts': [
             'miaplpyApp=miaplpy.miaplpyApp:main',
+            'check_ifgs=miaplpy.check_ifgs:main'
         ],
     },
     extras_require={
