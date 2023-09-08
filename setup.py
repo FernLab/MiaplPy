@@ -61,7 +61,7 @@ setup(
     keywords='miaplpy',
     long_description=readme,
     name='miaplpy',
-    packages=find_packages(include=['miaplpy', 'miaplpy.*']),
+    packages=find_packages(),
     package_data={"miaplpy": ["defaults/*"]},
     include_package_data=True,
     setup_requires=req_setup,
