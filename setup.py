@@ -55,7 +55,7 @@ setup(
             'generate_temporal_coherence=miaplpy.generate_temporal_coherence:main',
             'generate_unwrap_mask=miaplpy.generate_unwrap_mask:main',
             'load_ifgram=miaplpy.load_ifgram:main',
-            'load_slc_geometry=miaplpy.load_slc_geometry:main',
+            'load_slc_geometry.py=miaplpy.load_slc_geometry:main',
             'network_inversion=miaplpy.network_inversion:main',
             'phase_linking=miaplpy.phase_linking:main',
             'prep_slc_isce=miaplpy.prep_slc_isce:main'
