@@ -170,7 +170,7 @@ class slcStackDict:
                 for i in range(self.numSlc):
                     slcObj = self.pairsDict[self.dates[i]]
                     # fname, metadata = slcObj.read(dsName, box=box)
-                    fname, metadata = read(dsName)
+                    fname, metadata = slcObj.read(dsName)
 
                     if not box:
                         box = (0, 0, self.width, self.length)
